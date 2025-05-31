@@ -1066,7 +1066,7 @@ extern "C" {
     double * accumulator
   );
 
-  int perturbations_interpolate_convolve_ncdmfft_vectorized_tau(
+  int perturbations_convolve_ncdmfft(
     struct precision * ppr,
     struct background * pba,
     struct perturbations * ppt,

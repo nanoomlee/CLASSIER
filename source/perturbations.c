@@ -11089,7 +11089,7 @@ int perturbations_calculate_psi_ncdmfft(struct precision * ppr,
       class_call(perturbations_initial_condition_ncdmfft(pba, ppt, ppw, k, n_ncdm, index_q, 1, psi_1),ppt->error_message,ppt->error_message);
       class_call(perturbations_initial_condition_ncdmfft(pba, ppt, ppw, k, n_ncdm, index_q, 2, psi_2),ppt->error_message,ppt->error_message);
         
-      class_call(perturbations_interpolate_convolve_ncdmfft_vectorized_tau(ppr, pba, ppt, ppw, k, n_ncdm, index_q, psi_0, psi_1, psi_2),ppt->error_message,ppt->error_message);
+      class_call(perturbations_convolve_ncdmfft(ppr, pba, ppt, ppw, k, n_ncdm, index_q, psi_0, psi_1, psi_2),ppt->error_message,ppt->error_message);
       for (int index_tau=0; index_tau < ppw->tau_ncdmfft_size; index_tau++) {
         tau = ppw->tau_ncdmfft_sampling[index_tau];
         if (tau < ppr->l_max_ncdmfft/k) {
@@ -11273,7 +11273,7 @@ int perturbations_initial_condition_ncdmfft(
 
 }
 
-int perturbations_interpolate_convolve_ncdmfft_vectorized_tau(
+int perturbations_convolve_ncdmfft(
   struct precision * ppr,
   struct background * pba,
   struct perturbations * ppt,
