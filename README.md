@@ -8,7 +8,7 @@ The code requires seperate installations of fftw3 (https://www.fftw.org) and fin
 
 If you use CLASSIER, please refer to:
 
-1. [N. Lee, J. L. Bernal, S. G\"unther, L. Ji, M. Kamionkowski (arXiv:2506.01956)](https://arxiv.org/abs/2506.01956)
+1. [N. Lee, J. L. Bernal, S. Günther, L. Ji, M. Kamionkowski (arXiv:2506.01956)](https://arxiv.org/abs/2506.01956)
 2. [L. Ji, M. Kamionkowski, J. L. Bernal, Phys. Rev. D 106, 103531 (2022)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.106.103531)
 3. [M. Kamionkowski, Phys. Rev. D 104, 063512 (2021)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.104.063512)
 
