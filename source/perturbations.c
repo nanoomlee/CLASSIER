@@ -745,7 +745,7 @@ int perturbations_init(
   
   class_test((ppt->gauge == newtonian) && (pba->has_ncdmfft == _TRUE_),
              ppt->error_message,
-             "The newtonian gauge is currently not supported in CLASSIER");
+             "The newtonian gauge is currently not supported in CLASSIER with IE approach");
 
   class_test((ppt->gauge == synchronous) && (pba->has_cdm == _FALSE_),
              ppt->error_message,
