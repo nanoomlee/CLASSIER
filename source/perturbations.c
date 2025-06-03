@@ -742,6 +742,10 @@ int perturbations_init(
     if (ppt->perturbations_verbose > 0)
       printf("Computing sources\n");
   }
+  
+  class_test((ppt->gauge == newtonian) && (pba->has_ncdmfft == _TRUE_),
+             ppt->error_message,
+             "The newtonian gauge is currently not supported in CLASSIER");
 
   class_test((ppt->gauge == synchronous) && (pba->has_cdm == _FALSE_),
              ppt->error_message,
