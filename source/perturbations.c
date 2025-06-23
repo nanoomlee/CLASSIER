@@ -6267,7 +6267,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
           //Jump to next momentum bin:
           idx += (ppw->pv->l_max_ncdm[n_ncdm]+1);
-
+          index_nq += 1;
         }
       }
     }
@@ -7607,26 +7607,6 @@ int perturbations_total_stress_energy(
           rho_m += ppw->pvecback[pba->index_bg_rho_ncdm1+n_ncdm];
         }
       }
-
-//!!!!!!
-if ((ppr->print_ncdmfft==1)||(ppr->print_ncdmfft==10)){
-if ((ppt->has_source_delta_ncdm == _TRUE_) || (ppt->has_source_theta_ncdm == _TRUE_) || (ppt->has_source_delta_m == _TRUE_)) {
-//if (k>ppr->k_min_ncdmfft){
-if ((((k==0.001)||(k==0.01))||(k==0.1))||(k==0.5)||(k==1)||(k==5)||(k==10)||(k==50)||(k==100)){
-char file[200];
-//sprintf(file, "../data/run_7/delta_ncdm_total_stress_energy_fa.dat");
-//sprintf(file, "../files_for_test/delta_ncdm_Nfftfft_new2_k%e_loop%d_NG1_300_NG2_1000.dat",k, ppw->index_loop_ncdmfft );
-//sprintf(file, "../files_for_test/delta_ncdm_nufft_testspline_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-//sprintf(file, "../files_for_test/delta_ncdm_nufft_bigq_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-sprintf(file, "/Users/nanoomlee/Documents/Research/JHU/no-BoltzmannHierarchy/devel/files_for_test/delta_ncdm_nufft_v3.2.2_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-//sprintf(file, "../files_for_test/delta_ncdm_v3.2.2_ell40_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-//sprintf(file, "../files_for_test/delta_ncdm_Nfftfft_loop%d.dat",ppw->index_loop_ncdmfft );
-FILE *fout;
-fout = fopen(file, "a");
-fprintf(fout,"%e %e %e %e %e %e %e\n", a,k, ppw->delta_ncdm[0],ppw->theta_ncdm[0],ppw->shear_ncdm[0], tau, rho_plus_p_theta_ncdm/(k*factor));
-fclose(fout);
-}}
-}
 
       if ((ppt->has_source_delta_m == _TRUE_) || (ppt->has_source_theta_m == _TRUE_)) {
         for (n_ncdm=0; n_ncdm < pba->N_ncdm; n_ncdm++){
@@ -10149,22 +10129,6 @@ int perturbations_derivs(double tau,
     }
 
   }
-
-//!!!!!!
-//if (k>ppr->k_min_ncdmfft){
-if ((ppr->print_ncdmfft==1)||(ppr->print_ncdmfft==10)){
-if ((((k==0.001)||(k==0.01))||(k==0.1))||(k==0.5)||(k==1)||(k==5)||(k==10)||(k==50)||(k==100)||(k==20)||(k==0.07759678360660043)||(k==0.074)){
-char file[200];
-//sprintf(file, "../files_for_test/metric_Nfft_ori3_k%e_default2_evolver1.dat",k);
-//sprintf(file, "../files_for_test/metric_nufft_testspline_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-sprintf(file, "/Users/nanoomlee/Documents/Research/JHU/no-BoltzmannHierarchy/devel/files_for_test/metric_nufft_v3.2.2_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-//sprintf(file, "../files_for_test/metric_ncdm_v3.2.2_ell40_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-FILE *fout;
-fout = fopen(file, "a");
-fprintf(fout,"%e %e %e %e %e %e\n", tau, a, - 2 * y[ppw->pv->index_pt_delta_cdm],ppw->pvecmetric[ppw->index_mt_h_prime], y[ppw->pv->index_pt_eta],ppw->pvecmetric[ppw->index_mt_eta_prime],pvecback[pba->index_bg_chi_ncdmfft+0]);
-fclose(fout);
-}
-}
 
   /** - vector mode */
   if (_vectors_) {
