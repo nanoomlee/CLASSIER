@@ -11668,17 +11668,11 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
                                 double k,
                                 double tau_ini)
 {
-  /** 1. find a suited tau sampling for this k.
-   * It will be used to calculate the ncdm ffts.
-   * The length differs between 1 for small k and
-   * ppt->N_conv_ncdmfft for large k.
-   * 
-   * We sample uniformly between x=0 and x=xi_max which is min(ppr->ncdmfft_fluid_trigger_tau_over_tau_k, pba->conformal_age * k)
-   * The number of samples corresponds to ceil(xi_max / ppr->delta_x_ncdmfft)
+  /**
+   * workspace for ncdmfft
    */
 
-  // find xi_max. It is the largest x value for the highest neutrino momentum either when switching to fluid approximation or today
-  double xi_max=0, tau_xi_max; // tau at xi_max
+  double xi_max=0, tau_xi_max; 
 
   int first_index_back;
   double * pvecback, * chi_offset;
