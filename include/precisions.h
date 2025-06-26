@@ -271,16 +271,15 @@ class_precision_parameter(start_large_k_at_tau_h_over_tau_k,double,0.07)  /**< l
 class_precision_parameter(ncdmfft_bigq_approximation,int,0)  /** flag for big-q approximation", 1:On / 2:Off */
 class_precision_parameter(N_loops_ncdmfft,int,3)  /**< Number of NCDM FFT loops for approximation. */
 
-class_precision_parameter(N_tau_ncdmfft_size_min,int,1000)  /**< Sample size of bessel functions in ncdmfft. */
 class_precision_parameter(N_G1,int,201)  /**< Number of xi points for G1(xi) */
 class_precision_parameter(N_G2,int,0)  /**< Number of xi points for G2(xi), will be defined in perturbations.c */
 class_precision_parameter(xi_m,double,100.)  /**< Default value of xi where G1 and G2 are splitted */
 class_precision_parameter(N_type,int,2)
 class_precision_parameter(N_ell,int,3)
 
+class_precision_parameter(N_tau_ncdmfft_size_min,int,1000)  /**< Sample size of bessel functions in ncdmfft. */
 class_precision_parameter(N_tau_ncdmfft_size_scale,int,10000)  /**< Number of tau sampling for ncdmfft */
 class_precision_parameter(l_max_ncdmfft,int,3)  /**< max l to truncate for ansatz ncdmfft loop */
-class_precision_parameter(k_min_ncdmfft,double,0.00099)  /**< minimum k mode which where ncdmfft is used. At low k_modes ncdmfft tends to become numericially noisy. This can be also circumvented by increasing N_conv_ncdmfft and N_tau_ncdmfft_sample_size */
 class_precision_parameter(print_ncdmfft,int,0)
 /**< whether printed. */
 
