@@ -2140,7 +2140,7 @@ int perturbations_timesampling_for_sources(
     
     }
 
-    ppt->N_G1_freq_max = (int) (ceil(ppr->N_G1*chi_today_qmax*k_max/ppr->xi_m));
+    ppt->N_G1_freq_max = (int) (ceil(ppr->N_G1*fmax(2.,chi_today_qmax*k_max/ppr->xi_m)));
 	
     int dim = 1, ier;
 	ppt->ntrans = ppr->N_ell*ppr->N_type;
@@ -11869,16 +11869,6 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
         }
         ppw->xi_ncdmfft_sampling[index_nq][index_tau] = 
         (pvecback[pba->index_bg_chi_ncdmfft + index_nq] - chi_offset[index_nq] ) * k;
-
-if (ppr->print_ncdmfft==1){
-if ((((k==0.001)||(k==0.01))||(k==0.1))||(k==0.5)||(k==1)||(k==5)||(k==10)||(k==50)||(k==100)||(k==20)||(k==1.1313e-1)){
-char file[200];
-sprintf(file, "/Users/nanoomlee/Documents/Research/JHU/no-BoltzmannHierarchy/devel/files_for_test/chi_tau_nufft_v3.2.2_k%e_loop%d.dat",k, ppw->index_loop_ncdmfft );
-FILE *fout;
-fout = fopen(file, "a");
-fprintf(fout,"%d %e %e\n", index_nq, tau, ppw->xi_ncdmfft_sampling[index_nq][index_tau]);
-fclose(fout);
-}}
 
       index_nq += 1;
       }
