@@ -1,3 +1,4 @@
+# CLASS:UHP from arXiv:2405.06047
 
 k_per_decade_for_bao = 50
 k_per_decade_for_pk = 50
@@ -15,4 +16,3 @@ hmcode_tol_sigma = 1.e-8
 # - plus three new lines specific to massive neutrinos:
 
 tol_ncdm_synchronous = 1.e-5
-l_max_ncdm = 17

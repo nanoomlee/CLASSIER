@@ -741,6 +741,7 @@ int perturbations_init(
   else {
     if (ppt->perturbations_verbose > 0)
       printf("Computing sources\n");
+	  if (pba->has_ncdmfft == _TRUE_) printf("  (w/ Integral-Equation replacing Boltzmann hierarchy for ncdm)\n");
   }
   
   class_test((ppt->gauge == newtonian) && (pba->has_ncdmfft == _TRUE_),
@@ -1218,6 +1219,13 @@ int perturbations_free(
       free(ppt->xi_G2[i]); free(ppt->w8_G2[i]);
     }
     free(ppt->xi_G2); free(ppt->w8_G2);
+    free(ppt->xx); 
+    for (int i=0;i<60;i++) {
+      free(ppt->j_array[i]); free(ppt->dj_array[i]); free(ppt->d2j_array[i]);
+	}
+	free(ppt->j_array);
+	free(ppt->dj_array);
+	free(ppt->d2j_array);
   }
    
 
@@ -2087,6 +2095,29 @@ int perturbations_timesampling_for_sources(
   }
 #endif
 
+    ppt->j_array   = malloc(60 * sizeof(double *));
+    ppt->dj_array  = malloc(60 * sizeof(double *));
+    ppt->d2j_array = malloc(60 * sizeof(double *));
+    for (int l = 0; l < 60; l++) {
+      ppt->j_array[l]   = malloc(5000 * sizeof(double));
+      ppt->dj_array[l]  = malloc(5000 * sizeof(double));
+      ppt->d2j_array[l] = malloc(5000 * sizeof(double));
+    }
+	ppt->xx   = malloc(5000 * sizeof(double));
+	
+    char file_jell[200];
+    sprintf(file_jell, "ncdmfft/j_ell.txt");
+    FILE *fA_jell = fopen(file_jell, "r");
+    for (int j = 0; j < 5000; j++) {
+      ppt->xx[j] = 0.2*j;
+      for (int i = 0; i < 60; i++) {
+        fscanf(fA_jell,"%le", &(ppt->j_array[i][j]));
+        fscanf(fA_jell,"%le", &(ppt->dj_array[i][j]));
+        fscanf(fA_jell,"%le", &(ppt->d2j_array[i][j]));
+      }
+    }
+    fclose(fA_jell);
+
     double k_max = ppt->k[ppt->index_md_scalars][ppt->k_size[ppt->index_md_scalars]-1];
 
     ppr->N_G2 = 80000;
@@ -2128,7 +2159,7 @@ int perturbations_timesampling_for_sources(
       fclose(fout2);*/
 
       char file[200];
-      sprintf(file, "GL/GL_%d.dat",N_G2_kbin);
+      sprintf(file, "ncdmfft/GL_%d.dat",N_G2_kbin);
       FILE *fA = fopen(file, "r");
       for (int j = 0; j < N_G2_kbin; j++) {
         fscanf(fA,"%le", &(ppt->xi_G2[i][j]));
@@ -2145,10 +2176,10 @@ int perturbations_timesampling_for_sources(
     int dim = 1, ier;
 	ppt->ntrans = ppr->N_ell*ppr->N_type;
     int64_t Ns1[] = {ppr->N_G1}, Ns2[] = {ppr->N_G2},Ns2_freq[] = {ppt->N_G2_freq_max}, Ns3[] = {ppt->N_G1_freq_max};
-	class_alloc(ppt->list_r2c_plans_ncdmfinufft_G1, number_of_threads * sizeof(finufft_plan), ppt->error_message); // (NL)
-    class_alloc(ppt->list_c2r_plans_ncdmfinufft_G1, number_of_threads * sizeof(finufft_plan), ppt->error_message); // (NL)
-	class_alloc(ppt->list_r2c_plans_ncdmfinufft_G2, number_of_threads * sizeof(finufft_plan), ppt->error_message); // (NL)
-    class_alloc(ppt->list_c2r_plans_ncdmfinufft_G2, number_of_threads * sizeof(finufft_plan), ppt->error_message); // (NL)
+	class_alloc(ppt->list_r2c_plans_ncdmfinufft_G1, number_of_threads * sizeof(finufft_plan), ppt->error_message);
+    class_alloc(ppt->list_c2r_plans_ncdmfinufft_G1, number_of_threads * sizeof(finufft_plan), ppt->error_message);
+	class_alloc(ppt->list_r2c_plans_ncdmfinufft_G2, number_of_threads * sizeof(finufft_plan), ppt->error_message);
+    class_alloc(ppt->list_c2r_plans_ncdmfinufft_G2, number_of_threads * sizeof(finufft_plan), ppt->error_message);
 
     // create the fft plans for all threads here:
     for (int index_thread = 0; index_thread<number_of_threads; index_thread++) {
@@ -3427,18 +3458,27 @@ int perturbations_solve(
   tau = tau_mid;
 
   // Determine if we want to do ncdmfft calculations
-  if ((ppt->has_ncdmfft==_TRUE_) && (k*pba->conformal_age > ppr->l_max_ncdmfft)){
-    class_call(perturbation_workspace_fill_ncdmfft(ppr,
+  //if ((ppt->has_ncdmfft==_TRUE_) && (k*pba->conformal_age > ppr->l_max_ncdmfft)){
+  if (ppt->has_ncdmfft==_TRUE_){
+    if (k>ppr->kmin_ncdmfft){
+     class_call(perturbation_workspace_fill_ncdmfft(ppr,
                                           pba,
                                           ppt,
                                           ppw,
                                           k,
                                           tau),
-      ppt->error_message,
-      ppt->error_message);
+                ppt->error_message,
+                ppt->error_message);
+      ppw->ncdm_fluid_approximation = ppr->ncdm_fluid_approximation;
+    }
+    else{
+      ppw->N_loops_ncdmfft = 1;
+      ppw->ncdm_fluid_approximation = 3.;
+    }
   }
   else {
     ppw->N_loops_ncdmfft = 1;
+    ppw->ncdm_fluid_approximation = ppr->ncdm_fluid_approximation;
   }
 
   /** - in the ncdmfft method, this is the beginning of the preliminary iteration. */
@@ -3446,15 +3486,15 @@ int perturbations_solve(
  
   for (index_loop_ncdmfft=0; index_loop_ncdmfft<ppw->N_loops_ncdmfft; index_loop_ncdmfft++) {
     t_evolv = omp_get_wtime();    
+    ppw->bigq_approx_done = 0;
     
 	/* - update loop index */
     ppw->index_loop_ncdmfft = index_loop_ncdmfft;
-
 	ppw->ncdm_fluid_trigger_tau_over_tau_k = ppr->ncdm_fluid_trigger_tau_over_tau_k;
+
     if (ppt->has_ncdmfft) {
-      double k_min = ppt->k[ppt->index_md_scalars][0];
-      if (index_loop_ncdmfft==0) ppw->ncdm_fluid_trigger_tau_over_tau_k = 31.;
-      else ppw->ncdm_fluid_trigger_tau_over_tau_k = 2*pba->conformal_age / k_min;	// not to turn on fluid approx 
+	  ppw->ncdmfft_fluid_trigger_tau_over_tau_k = ppr->ncdm_fluid_trigger_tau_over_tau_k;
+      if (index_loop_ncdmfft>0) ppw->ncdm_fluid_approximation = 3.; 
     }
 
     /* - if we have ncdmfft we need to modify the array of tau at which we want the quantities to be stored. 
@@ -3540,11 +3580,10 @@ int perturbations_solve(
         perhaps_print_variables = perturbations_print_variables;
       }
     }
-    
+
     /** - loop over intervals over which approximation scheme is uniform. For each interval: */
     
     for (index_interval=0; index_interval<interval_number; index_interval++) {
-
       /** - --> (a) fix the approximation scheme */
 
       for (index_ap=0; index_ap<ppw->ap_size; index_ap++)
@@ -3600,7 +3639,11 @@ int perturbations_solve(
       else {
         generic_evolver = evolver_ndf15;
       }
-
+      if (ppt->has_ncdmfft){
+          if (k>ppr->kmin_ncdmfft)  generic_evolver = evolver_ndf15;
+		  else generic_evolver = evolver_rk;
+	  }
+	  
       class_call(generic_evolver(perturbations_derivs,
                                  interval_limit[index_interval],
                                  interval_limit[index_interval+1],
@@ -3625,6 +3668,7 @@ int perturbations_solve(
     // if we are the the second to last loop we store the metric perturbations to be reused in the next classy call
 
     /* - calculate ncdm psi if we have ncdmfft and are not in the final loop */
+    double t_calc_psi=0.;
     if (ppw->N_loops_ncdmfft - index_loop_ncdmfft>1) { 
 
       double cstart = omp_get_wtime();    
@@ -3636,7 +3680,8 @@ int perturbations_solve(
                 ppt->error_message,
                 ppt->error_message);
       double cstop = omp_get_wtime();    
-      if (ppt->perturbations_verbose==1) printf("Calc psi %f seconds %e mode\n", (float)(cstop - cstart), k);
+	  t_calc_psi = cstop - cstart;
+      if (ppt->perturbations_verbose==3) printf("Calc psi %f seconds %e mode\n\n", (float)(cstop - cstart), k);
 
     }
 
@@ -3658,12 +3703,13 @@ int perturbations_solve(
 
     }
     else{
-      if (ppt->perturbations_verbose==2) printf("%d-th evolution + %d-th convolution took total %f seconds %e mode\n", index_loop_ncdmfft, index_loop_ncdmfft+1, omp_get_wtime()-t_evolv, k);
+      if (ppt->perturbations_verbose==2) printf("%d-th evolution took %f seconds %e mode\n", index_loop_ncdmfft, omp_get_wtime()-t_evolv-t_calc_psi, k);
+      if (ppt->perturbations_verbose==2) printf("%d-th convolution took %f seconds %e mode\n", index_loop_ncdmfft+1, t_calc_psi, k);
     }
 
   } // End of ncdmfft loops
 
-  if ((ppt->has_ncdmfft==_TRUE_) && (k*pba->conformal_age > ppr->l_max_ncdmfft)) {
+  if ((ppt->has_ncdmfft==_TRUE_) && (k>ppr->kmin_ncdmfft)){
     class_call(perturbation_workspace_free_ncdmfft( ppt,
                                                     pba,
                                                     ppw),
@@ -4431,7 +4477,8 @@ int perturbations_vector_init(
                      ppt->error_message,
                      "ppr->l_max_ncdm=%d should be at least 4, i.e. we must integrate at least over first four momenta of non-cold dark matter perturbed phase-space distribution",n_ncdm);
           //Copy value from precision parameter:
-          if ((ppt->has_ncdmfft) && (k*pba->conformal_age > ppr->l_max_ncdmfft)) {
+          //if ((ppt->has_ncdmfft) && (k*pba->conformal_age > ppr->l_max_ncdmfft)) {
+          if ((ppt->has_ncdmfft==_TRUE_) && (k>ppr->kmin_ncdmfft)){
             if (ppw->index_loop_ncdmfft!=0){
               ppv->l_max_ncdm[n_ncdm] = -1; // [SG] does that cause any trouble? I do not think so
             }
@@ -4654,7 +4701,9 @@ int perturbations_vector_init(
       for (n_ncdm = 0; n_ncdm < ppv-> N_ncdm; n_ncdm++){
         for (index_q=0; index_q < ppv->q_size_ncdm[n_ncdm]; index_q++){
           for (l=0; l<=ppv->l_max_ncdm[n_ncdm]; l++){
-            if (l>2) ppv->used_in_sources[index_pt]=_FALSE_;
+            //!!!!!!!!!
+            //if (l>2) ppv->used_in_sources[index_pt]=_FALSE_;
+            if (l>2) ppv->used_in_sources[index_pt]=_TRUE_;
             index_pt++;
           }
         }
@@ -6258,13 +6307,6 @@ int perturbations_initial_conditions(struct precision * ppr,
             ppw->pv->y[idx+3] = -0.25 * l3_ur * pba->dlnf0_dlnq_ncdm[n_ncdm][index_q];
           }
 
-          // Store initial conditions when calculutaing psi using ncdmfft
-          if ((ppt->has_ncdmfft == _TRUE_) && (k*pba->conformal_age > ppr->l_max_ncdmfft)) {
-            ppw->psi_0_ic_ncdmfft[index_nq] = ppw->pv->y[idx];    
-            ppw->psi_1_ic_ncdmfft[index_nq] = -epsilon/3./q/k*theta_ur* pba->dlnf0_dlnq_ncdm[n_ncdm][index_q];
-            ppw->psi_2_ic_ncdmfft[index_nq] = -0.5 * shear_ur * pba->dlnf0_dlnq_ncdm[n_ncdm][index_q];
-          }
-
           //Jump to next momentum bin:
           idx += (ppw->pv->l_max_ncdm[n_ncdm]+1);
           index_nq += 1;
@@ -6652,7 +6694,8 @@ int perturbations_approximations(
     if (pba->has_ncdm == _TRUE_) {
 
       if ((tau/tau_k > ppw->ncdm_fluid_trigger_tau_over_tau_k) &&
-          (ppr->ncdm_fluid_approximation != ncdmfa_none)) {
+          (ppw->ncdm_fluid_approximation != ncdmfa_none)) {
+          //(ppr->ncdm_fluid_approximation != ncdmfa_none)) {
 
         ppw->approx[ppw->index_ap_ncdmfa] = (int)ncdmfa_on;
       }
@@ -8036,7 +8079,10 @@ int perturbations_sources(
     /** - if we are in a ncdmfft loop, which is NOT the last one, we only seek for approximate solutions of h' and eta' from which we can calculate the psi_l of ncdm */
     if (ppw->N_loops_ncdmfft - ppw->index_loop_ncdmfft > 1)  {
       ppw->h_prime_ncdmfft[index_tau] = pvecmetric[ppw->index_mt_h_prime];
-      ppw->eta_prime_ncdmfft[index_tau] = dy[ppw->pv->index_pt_eta];
+      ppw->eta_prime_ncdmfft[index_tau] = pvecmetric[ppw->index_mt_eta_prime];
+      ppw->h_prime_prime_ncdmfft[index_tau] = pvecmetric[ppw->index_mt_h_prime_prime];
+      ppw->eta_prime_prime_ncdmfft[index_tau] = (pvecmetric[ppw->index_mt_alpha_prime]*2.*pow(k,2.) - pvecmetric[ppw->index_mt_h_prime_prime])/6.;
+      ppw->Hubble_ncdmfft[index_tau] = pvecback[pba->index_bg_H];
       
       int idx = ppw->pv->index_pt_psi0_ncdm1;
       int index_nq = 0;
@@ -8044,9 +8090,14 @@ int perturbations_sources(
       if (ppw->index_loop_ncdmfft==0) {
         for(int n_ncdm=0; n_ncdm < pba->N_ncdm; n_ncdm++){
           for (int index_q=0; index_q<pba->q_size_ncdm[n_ncdm]; index_q++) {
-            ppw->psi_BH_0_ncdmfft[index_nq][index_tau] = y[idx];  
-            ppw->psi_BH_1_ncdmfft[index_nq][index_tau] = y[idx+1];
-            ppw->psi_BH_2_ncdmfft[index_nq][index_tau] = y[idx+2];
+            ppw->psi_0_ncdmfft[index_nq][index_tau] = y[idx];  
+            ppw->psi_1_ncdmfft[index_nq][index_tau] = y[idx+1];
+            ppw->psi_2_ncdmfft[index_nq][index_tau] = y[idx+2];
+
+            if (tau <= ppw->ncdm_fluid_trigger_tau_over_tau_k/k){
+              for (int index_ell=0;index_ell<ppw->l_max_ncdmfft;index_ell++) ppw->psi_ell_ic_ncdmfft_approx[index_ell][index_nq] = y[idx+index_ell];
+              ppw->index_tau_ic_ncdmfft_approx = index_tau;
+            }
             idx += (ppw->pv->l_max_ncdm[n_ncdm]+1);
             index_nq += 1;
           }
@@ -11034,7 +11085,7 @@ int perturbations_calculate_psi_ncdmfft(struct precision * ppr,
                           double k)
 
 {
-  double q,q2,a2;
+  double q,q2,a2,s;
   double epsilon,tau;
 
   // looping over ncdm species (backward)
@@ -11043,8 +11094,9 @@ int perturbations_calculate_psi_ncdmfft(struct precision * ppr,
     for (int index_q = 0; index_q < pba->q_size_ncdm[n_ncdm]; index_q++) index_nq += 1;
   }
   index_nq -= 1;
-
+  double m_ncdm_in_Tncdm_today;
   for (int n_ncdm = pba->N_ncdm-1; n_ncdm > -1; n_ncdm --) {
+    m_ncdm_in_Tncdm_today = pba->m_ncdm_in_eV[n_ncdm] / (pba->T_cmb*pba->T_ncdm[n_ncdm]*_k_B_/_eV_);
     // looping over ncdm momenta for that species
     for (int index_q = pba->q_size_ncdm[n_ncdm]-1; index_q > -1; index_q--) {
       double *psi_0, *psi_1, *psi_2;
@@ -11056,16 +11108,16 @@ int perturbations_calculate_psi_ncdmfft(struct precision * ppr,
       class_call(perturbations_initial_condition_ncdmfft(pba, ppt, ppw, k, n_ncdm, index_q, 0, psi_0),ppt->error_message,ppt->error_message);
       class_call(perturbations_initial_condition_ncdmfft(pba, ppt, ppw, k, n_ncdm, index_q, 1, psi_1),ppt->error_message,ppt->error_message);
       class_call(perturbations_initial_condition_ncdmfft(pba, ppt, ppw, k, n_ncdm, index_q, 2, psi_2),ppt->error_message,ppt->error_message);
-        
-      class_call(perturbations_convolve_ncdmfft(ppr, pba, ppt, ppw, k, n_ncdm, index_q, psi_0, psi_1, psi_2),ppt->error_message,ppt->error_message);
-      for (int index_tau=0; index_tau < ppw->tau_ncdmfft_size; index_tau++) {
-        tau = ppw->tau_ncdmfft_sampling[index_tau];
-        if (tau < ppr->l_max_ncdmfft/k) {
-          psi_0[index_tau] = ppw->psi_BH_0_ncdmfft[index_nq][index_tau];
-          psi_1[index_tau] = ppw->psi_BH_1_ncdmfft[index_nq][index_tau];
-          psi_2[index_tau] = ppw->psi_BH_2_ncdmfft[index_nq][index_tau];
-        }
-      }
+
+      q = pba->q_ncdm[n_ncdm][index_q];
+      s = pba->H0*sqrt(pow(q,2.)+pow(m_ncdm_in_Tncdm_today,2.))/(k*q);
+      if ((ppr->ncdmfft_small_scale_approx) && (s < 0.0025)){
+        class_call(perturbations_ncdm_small_scale_approx(ppr, pba, ppt, ppw, k, n_ncdm, index_q, psi_0, psi_1, psi_2),ppt->error_message,ppt->error_message);
+	  }
+	  else{
+        class_call(perturbations_convolve_ncdmfft(ppr, pba, ppt, ppw, k, n_ncdm, index_q, psi_0, psi_1, psi_2),ppt->error_message,ppt->error_message);
+	  }
+
       index_nq -= 1;
     }
 
@@ -11224,11 +11276,11 @@ int perturbations_initial_condition_ncdmfft(
   index_nq += index_q;
 
   double * x = ppw->xi_ncdmfft_sampling[index_nq];
-  double psi_0_ic = ppw->psi_0_ic_ncdmfft[index_nq];
-  double psi_1_ic = ppw->psi_1_ic_ncdmfft[index_nq];
-  double psi_2_ic = ppw->psi_2_ic_ncdmfft[index_nq];
+  double psi_0_ic = ppw->psi_0_ncdmfft[index_nq][0];
+  double psi_1_ic = ppw->psi_1_ncdmfft[index_nq][0];
+  double psi_2_ic = ppw->psi_2_ncdmfft[index_nq][0];
 
-  for (int index_tau = 0; index_tau < ppw->tau_ncdmfft_size; index_tau++) {
+  for (int index_tau = ppw->index_tau_ic_ncdmfft_approx+1; index_tau < ppw->tau_ncdmfft_size; index_tau++) {
     double ic_term = 0.;
     double temp;
     auxiliary_function_ncdmfft(ell, 0, x[index_tau], &temp); ic_term += + (2.0*0.0+1.0) * temp * psi_0_ic;
@@ -11290,7 +11342,7 @@ int perturbations_convolve_ncdmfft(
   }
 
   double stop1 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("alloc G_of_tau = %f \n", stop1 - start);
+  if (ppt->perturbations_verbose==3) printf("alloc G_of_tau = %f \n", stop1 - start);
 
   // populate the G as a function of tau
   q = pba->q_ncdm[n_ncdm][index_q];
@@ -11304,7 +11356,7 @@ int perturbations_convolve_ncdmfft(
   }
 
   double stop2 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("calc G_of_tau = %f \n", stop2 - stop1);
+  if (ppt->perturbations_verbose==3) printf("calc G_of_tau = %f \n", stop2 - stop1);
 
   // Calculate coefficients for G0's
   double xi_i, xi_m, xi_f;
@@ -11398,7 +11450,7 @@ int perturbations_convolve_ncdmfft(
   B_a2 = ppw->Bcoeff->a2, B_b2 = ppw->Bcoeff->b2, B_c2 = ppw->Bcoeff->c2, B_d2 = ppw->Bcoeff->d2;
 	  
   double stop3 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("Splitting G_of_x  = %f \n", stop3 - stop2);
+  if (ppt->perturbations_verbose==3) printf("Splitting G_of_x  = %f \n", stop3 - stop2);
  
   // arrays needed for NUFFTs
   double *xi_G1_out, *xi_G2_out;
@@ -11447,7 +11499,7 @@ int perturbations_convolve_ncdmfft(
   }
 
   double stop4 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("interpolate and build G1_of_x (including splitting)  = %f \n", stop4 - stop3);
+  if (ppt->perturbations_verbose==3) printf("interpolate and build G1_of_x (including splitting)  = %f \n", stop4 - stop3);
 
   // # of FFT frequencies for G1 (need to be an odd)
   int N_freq1 = (int) (ceil(N_G1*ppw->xi_max_qbin[n_ncdm*pba->q_size_ncdm[n_ncdm]+index_q]/xi_m));
@@ -11461,8 +11513,8 @@ int perturbations_convolve_ncdmfft(
  
   // G1 convolution will be done when not using big-q approx
   // When using big-q approx, G1 convolution is done when the following condition is not met
-  if ((ppr->ncdmfft_bigq_approximation==0)||(xi_m != ppr->xi_m)||((ppw->index_loop_ncdmfft<ppw->N_loops_ncdmfft-1)&&(ppr->ncdmfft_bigq_approximation==1)&& ((index_q==index_maxq)||(fabs(ppr->xi_m/k-tau_at_xi_m)/tau_at_xi_m>0.001)))){
-
+  if ((ppw->bigq_approx_done==0)||(fabs(ppr->xi_m/k-tau_at_xi_m)/tau_at_xi_m>0.001)){
+    if (ppr->ncdmfft_bigq_approx==1) ppw->bigq_approx_done = 1;
     double complex *integrand_G1, *finufft_G1;
     double *freq_G1, *w8_freq_G1;
     integrand_G1 = (double complex *) malloc(sizeof(double complex) * ((int) (ppr->N_ell*N_freq1)));
@@ -11478,27 +11530,27 @@ int perturbations_convolve_ncdmfft(
     }
   
     double stop4_2 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("Assigning arrays for G1 freq  = %f \n", stop4_2 - stop4);
+    if (ppt->perturbations_verbose==3) printf("Assigning arrays for G1 freq  = %f \n", stop4_2 - stop4);
 
     finufft_setpts(ppw->r2c_plan_ncdmfinufft_G1, N_G1, xi_G1_logscale, NULL, NULL, N_freq1, freq_G1, NULL, NULL);
 
     double stop4_3 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("G1 finufft_setpts for forward  = %f \n", stop4_3 - stop4_2);
+    if (ppt->perturbations_verbose==3) printf("G1 finufft_setpts for forward  = %f \n", stop4_3 - stop4_2);
 
     finufft_execute(ppw->r2c_plan_ncdmfinufft_G1, G1, finufft_G1);
     
 	double stop4_4 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("G1 foward transform  = %f \n", stop4_4 - stop4_3);
+    if (ppt->perturbations_verbose==3) printf("G1 foward transform  = %f \n", stop4_4 - stop4_3);
 	 
     compute_all_jffts(xi_f, N_freq1, freq_G1, xi_m, ppw->fft_kernels_ncdmfft_G1);
 	
 	double stop4_5 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("G1 Compute j_hat  = %f \n", stop4_5 - stop4_4);
+    if (ppt->perturbations_verbose==3) printf("G1 Compute j_hat  = %f \n", stop4_5 - stop4_4);
     
 	finufft_setpts(ppw->c2r_plan_ncdmfinufft_G1, N_freq1, freq_G1, NULL, NULL, ppw->tau_ncdmfft_size, xi_G1_out, NULL, NULL);
 	
 	double stop4_6 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("G1 finufft_setpts for backward  = %f \n", stop4_6 - stop4_5);
+    if (ppt->perturbations_verbose==3) printf("G1 finufft_setpts for backward  = %f \n", stop4_6 - stop4_5);
 
     double temp_G1hat_real, temp_G1hat_imag;
     for (ell=0;ell<ppr->N_ell;ell++){
@@ -11513,12 +11565,12 @@ int perturbations_convolve_ncdmfft(
     }
 	
 	double stop4_7 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("G1 backward integrand  = %f \n", stop4_7 - stop4_6);
+    if (ppt->perturbations_verbose==3) printf("G1 backward integrand  = %f \n", stop4_7 - stop4_6);
     
 	finufft_execute(ppw->c2r_plan_ncdmfinufft_G1, integrand_G1, KG1);
 
 	double stop4_8 = omp_get_wtime();
-    if (ppt->perturbations_verbose==1) printf("G1 backward transform = %f \n", stop4_8 - stop4_7);
+    if (ppt->perturbations_verbose==3) printf("G1 backward transform = %f \n", stop4_8 - stop4_7);
   
     for (ell=0;ell<ppr->N_ell;ell++){
       for (int i=0;i<ppw->tau_ncdmfft_size;i++) 
@@ -11571,28 +11623,28 @@ int perturbations_convolve_ncdmfft(
   }
 
   double stop5 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("interpolate and build G2_of_x (including splitting)  =  %f \n", stop5 - stop4);
+  if (ppt->perturbations_verbose==3) printf("interpolate and build G2_of_x (including splitting)  =  %f \n", stop5 - stop4);
 
   finufft_setpts(ppw->r2c_plan_ncdmfinufft_G2, N_G2, ppw->xi_G2, NULL, NULL, N_G2_freq, freq_G2, NULL, NULL);
 
   double stop6 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G2 finufft_setpts for forward  = %f \n", stop6 - stop5);
+  if (ppt->perturbations_verbose==3) printf("G2 finufft_setpts for forward  = %f \n", stop6 - stop5);
   
   finufft_execute(ppw->r2c_plan_ncdmfinufft_G2, G2, finufft_G2);
 
   double stop7 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G2 foward transform  = %f \n", stop7 - stop6);
+  if (ppt->perturbations_verbose==3) printf("G2 foward transform  = %f \n", stop7 - stop6);
 
   finufft_setpts(ppw->c2r_plan_ncdmfinufft_G2, N_G2_freq, freq_G2, NULL, NULL, ppw->tau_ncdmfft_size, xi_G2_out, NULL, NULL);
   double stop8 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G1 finufft_setpts for backward  = %f \n", stop8 - stop7);
+  if (ppt->perturbations_verbose==3) printf("G1 finufft_setpts for backward  = %f \n", stop8 - stop7);
 
   double complex *integrand_G2;
   integrand_G2 = (double complex *) malloc(sizeof(double complex) * ((int) (ppr->N_ell*N_G2_freq)));
   for (int i=0; i<ppw->tau_ncdmfft_size; i++) xi_G2_out[i] = xi_G2_out[i]*xi_f/_PI_;
   compute_all_jffts(xi_f,N_G2_freq,freq_G2, xi_f, ppw->fft_kernels_ncdmfft_G2);
   double stop9 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G2 Compute j_hat  = %f \n", stop9 - stop8);
+  if (ppt->perturbations_verbose==3) printf("G2 Compute j_hat  = %f \n", stop9 - stop8);
 
   for (ell=0;ell<ppr->N_ell;ell++){
     for (int index_type=0;index_type<ppr->N_type;index_type++){
@@ -11606,18 +11658,18 @@ int perturbations_convolve_ncdmfft(
   }
   
   double stop10 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G2 backward integrand  = %f \n", stop10 - stop9);
+  if (ppt->perturbations_verbose==3) printf("G2 backward integrand  = %f \n", stop10 - stop9);
  
   finufft_execute(ppw->c2r_plan_ncdmfinufft_G2, integrand_G2, KG2);
   
   double stop11 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G1 backward transform = %f \n", stop11 - stop10);
+  if (ppt->perturbations_verbose==3) printf("G1 backward transform = %f \n", stop11 - stop10);
   
   for (int i=0;i<ppw->tau_ncdmfft_size*ppr->N_ell;i++) KG0[i] = 0;
   compute_I0_vectorized_sum(xi_G2_out, ppw->tau_ncdmfft_size, xi_m, xi_f, ppw->Acoeff, ppw->Bcoeff, KG0);
 
   double stop12 = omp_get_wtime();
-  if (ppt->perturbations_verbose==1) printf("G0 convolution (analytic) = %f \n", stop12 - stop11);
+  if (ppt->perturbations_verbose==3) printf("G0 convolution (analytic) = %f \n", stop12 - stop11);
 
   // Add all the contributions
   for (ell=0;ell<ppr->N_ell;ell++){
@@ -11632,7 +11684,7 @@ int perturbations_convolve_ncdmfft(
     else if (ell==1) accumulator = accumulator_1;
     else if (ell==2) accumulator = accumulator_2;
     for (int index_tau = 0; index_tau < ppw->tau_ncdmfft_size; index_tau ++) {
-	  accumulator[index_tau] += KG_total[index_tau + ell*ppw->tau_ncdmfft_size];
+      if (ppw->tau_ncdmfft_sampling[index_tau] > MIN(ppw->l_max_ncdmfft, ppw->ncdmfft_fluid_trigger_tau_over_tau_k)/k) accumulator[index_tau] += KG_total[index_tau + ell*ppw->tau_ncdmfft_size];
     }
   }
 
@@ -11648,6 +11700,142 @@ int perturbations_convolve_ncdmfft(
 
   return _SUCCESS_;
   
+}
+
+
+int perturbations_ncdm_small_scale_approx(
+  struct precision * ppr,
+  struct background * pba,
+  struct perturbations * ppt,
+  struct perturbations_workspace * ppw,
+  double k, 
+  int n_ncdm,
+  int index_q,
+  double * accumulator_0,
+  double * accumulator_1,
+  double * accumulator_2
+)
+
+{
+  double start = omp_get_wtime();
+  int ell;
+  double *accumulator;
+  double q, a, e, e_prime;
+
+  q = pba->q_ncdm[n_ncdm][index_q];
+  double dlnf0dlnq = pba->dlnf0_dlnq_ncdm[n_ncdm][index_q];
+  double temp;
+  int index_nq = 0;
+  double jell, jell_p1, jell_p2;
+  double djell, ddjell;
+  if (n_ncdm>0){
+    for (int i=0;i<n_ncdm;i++) index_nq += pba->q_size_ncdm[i];
+  }
+  index_nq += index_q;
+  double xi;
+  double a_ic = ppw->a_ncdmfft[ppw->index_tau_ic_ncdmfft_approx];
+  double e_ic = sqrt(q*q+a_ic*a_ic*pba->M_ncdm[n_ncdm]*pba->M_ncdm[n_ncdm]);
+  int index_tau_ic = ppw->index_tau_ic_ncdmfft_approx;
+  int lmax=ppw->l_max_ncdmfft;
+  double **j_array, **dj_array, **d2j_array;
+  double *xx;
+
+  double h_prime, h_pprime, eta_prime, eta_pprime;
+  double h_prime_ic = ppw->h_prime_ncdmfft[index_tau_ic];
+  double h_pprime_ic = ppw->h_prime_prime_ncdmfft[index_tau_ic];
+  double e_prime_ic = pow(pba->M_ncdm[n_ncdm],2.) / e_ic * pow(a_ic,3.) * ppw->Hubble_ncdmfft[index_tau_ic];
+  double Psi0, Psi1, Psi2;
+  double factor = 1./(k*q)*dlnf0dlnq;
+  double xi_f;
+  double j0,j1,j2,j3;
+  int idx;
+  ErrorMsg em;
+  int last_index;
+  double S, S_prime, S_ic, S_prime_ic;
+  double eta_prime_ic = ppw->eta_prime_ncdmfft[index_tau_ic];
+  double eta_pprime_ic = ppw->eta_prime_prime_ncdmfft[index_tau_ic];
+  int last_idx;
+
+  for (int index_tau=index_tau_ic+1;index_tau<ppw->tau_ncdmfft_size;index_tau++){
+    idx = index_tau-index_tau_ic;
+    xi_f = ppw->xi_ncdmfft_sampling[index_nq][index_tau] - ppw->xi_ncdmfft_sampling[index_nq][index_tau_ic];
+    Psi0=0;Psi1=0;Psi2=0;
+    a = ppw->a_ncdmfft[index_tau]; 
+    e = sqrt(q*q+a*a*pba->M_ncdm[n_ncdm]*pba->M_ncdm[n_ncdm]);
+	e_prime = pow(pba->M_ncdm[n_ncdm],2.) / e * pow(a,3.) * ppw->Hubble_ncdmfft[index_tau];
+    h_prime = ppw->h_prime_ncdmfft[index_tau];
+    h_pprime = ppw->h_prime_prime_ncdmfft[index_tau];
+    eta_prime = ppw->eta_prime_ncdmfft[index_tau];
+    eta_pprime = ppw->eta_prime_prime_ncdmfft[index_tau];
+    xi = ppw->xi_ncdmfft_sampling[index_nq][index_tau] - ppw->xi_ncdmfft_sampling[index_nq][index_tau_ic];
+
+	S = dlnf0dlnq*e/(k*q)*(h_prime+6*eta_prime)/2.;
+	S_prime = dlnf0dlnq*e/pow(k*q,2.)*(e_prime*(h_prime+6*eta_prime)/2. + e*(h_pprime+6*eta_pprime)/2.);
+
+	S_ic = dlnf0dlnq*e_ic/(k*q)*(h_prime_ic+6*eta_prime_ic)/2.;
+	S_prime_ic = dlnf0dlnq*e_ic/pow(k*q,2.)*(e_prime_ic*(h_prime_ic+6*eta_prime_ic)/2. + e_ic*(h_pprime_ic+6*eta_pprime_ic)/2.);
+
+	if (xi_f < ppt->xx[4999]){
+
+      for (int i=0;i<lmax;i++){
+        ell = (double) i;
+        class_call(array_interpolate_linear(
+                ppt->xx,
+                5000, ppt->j_array[i],
+                1, xi_f, &last_index, &jell, 1, em), ppt->error_message, ppt->error_message);
+ 
+        class_call(array_interpolate_linear(
+                ppt->xx,
+                5000, ppt->dj_array[i],
+                1, xi_f, &last_index, &djell, 1, em), ppt->error_message, ppt->error_message);
+
+        class_call(array_interpolate_linear(
+                ppt->xx,
+                5000, ppt->d2j_array[i],
+                1, xi_f, &last_index, &ddjell, 1, em), ppt->error_message, ppt->error_message);
+
+        temp = jell;
+        Psi0 += pow(-1,ell) * (2*ell+1) * temp * ppw->psi_ell_ic_ncdmfft_approx[i][index_nq];
+        temp = -djell;
+        Psi1 += pow(-1,ell) * (2*ell+1) * temp * ppw->psi_ell_ic_ncdmfft_approx[i][index_nq];
+        temp = -(-3*ddjell-jell)/2.;
+        Psi2 += pow(-1,ell) * (2*ell+1) * temp * ppw->psi_ell_ic_ncdmfft_approx[i][index_nq];
+
+		if (i == 0) j0 = jell;
+		else if (i == 1) j1 = jell;
+		else if (i == 2) j2 = jell;
+		else if (i == 3) j3 = jell;
+		if (ell==0){
+			Psi0 += -S_prime_ic*jell;
+			Psi1 += -S_prime_ic*(-djell);
+			Psi2 += -S_prime_ic*(3*ddjell+jell)/2.;
+		}
+		if (ell==1){
+			Psi0 += S_ic * jell;
+			Psi1 += S_ic * (-djell);
+			Psi2 += S_ic * (3*ddjell+jell)/2.;
+		}
+	  }
+	  Psi0 += S_prime;
+	  Psi1 += S/3.;
+      /*Psi0 += S_prime;
+      Psi0 += j1*S_ic - j0*S_prime_ic;
+      Psi1 += S/3.;
+      Psi1 += (2.*j2-j0)/3.*S_ic - j1*S_prime_ic;
+      Psi2 += (3.*j3-2.*j1)/5.*S_ic - j2*S_prime_ic;*/
+    }
+	else{
+      Psi0 += S_prime;
+      Psi1 += S/3.;
+	}
+    if (ppw->tau_ncdmfft_sampling[index_tau] > MIN(ppw->l_max_ncdmfft, ppw->ncdmfft_fluid_trigger_tau_over_tau_k)/k){
+	  accumulator_0[index_tau] += Psi0;
+	  accumulator_1[index_tau] += Psi1;
+	  accumulator_2[index_tau] += Psi2;
+	}
+  }
+
+  return _SUCCESS_;
 }
 
 /**
@@ -11671,14 +11859,15 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
   /**
    * workspace for ncdmfft
    */
-
   double xi_max=0, tau_xi_max; 
-
   int first_index_back;
   double * pvecback, * chi_offset;
-
   double tau;
   int q_size, index_nq;
+
+  ppw->tau_ini = tau_ini;
+  ppw->l_max_ncdmfft = ppr->l_max_ncdmfft;
+  ppw->bigq_approx_done = 0;
 
   int N_qbin = 0; 
   for (int i = 0; i < pba->N_ncdm; i++) N_qbin += pba->q_size_ncdm[i];
@@ -11717,9 +11906,11 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
               pba->error_message,
               ppt->error_message);
 
+  double m_ncdm_max = 0.;
   // find xi_max of for the different neutrino species
   index_nq = 0;
   for (int i = 0; i < pba->N_ncdm; i++) {
+	m_ncdm_max = MAX(m_ncdm_max, pba->m_ncdm_in_eV[i]);
     for (int j = 0; j < pba->q_size_ncdm[i]; j++) {
       if (pvecback[pba->index_bg_chi_ncdmfft+i*pba->q_size_ncdm[i]+j]*k>xi_max) {
     
@@ -11747,7 +11938,15 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
   else if (idx==2) ppw->N_G2 = 25000;
   else if (idx==3) ppw->N_G2 = 40000;
   else if (idx==4) ppw->N_G2 = 80000;
-  
+ 
+  if ((ppr->ncdmfft_small_scale_approx==1) &&(k>1.)){
+    idx=1; ppw->N_G2 = 5000;
+    if (m_ncdm_max > 0.06*3) {
+      idx=2;
+      ppw->N_G2 = 25000;	// Need to generalize. Currently this is for massive nu
+    }
+  }
+
   ppw->xi_G2 = ppt->xi_G2[idx];
   ppw->w8_G2 = ppt->w8_G2[idx];
   // We need at least 2 points for the interpolation
@@ -11761,27 +11960,29 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
   /** - allocate eta_prime and h_prime here (only 1 dim in tau, since k is fixed within each call) */
   class_alloc(ppw->eta_prime_ncdmfft,ppw->tau_ncdmfft_size*sizeof(double),ppt->error_message);
   class_alloc(ppw->h_prime_ncdmfft,ppw->tau_ncdmfft_size*sizeof(double),ppt->error_message);
+  class_alloc(ppw->eta_prime_prime_ncdmfft,ppw->tau_ncdmfft_size*sizeof(double),ppt->error_message);
+  class_alloc(ppw->h_prime_prime_ncdmfft,ppw->tau_ncdmfft_size*sizeof(double),ppt->error_message);
+  class_alloc(ppw->Hubble_ncdmfft,ppw->tau_ncdmfft_size*sizeof(double),ppt->error_message);
 
   // Initialize to 0
   for(int index_tau=0; index_tau<ppw->tau_ncdmfft_size; index_tau++){
     ppw->eta_prime_ncdmfft[index_tau] = 0.0;
     ppw->h_prime_ncdmfft[index_tau] = 0.0;
+    ppw->eta_prime_prime_ncdmfft[index_tau] = 0.0;
+    ppw->h_prime_prime_ncdmfft[index_tau] = 0.0;
+    ppw->Hubble_ncdmfft[index_tau] = 0.0;
   }
-
-  /** - allocate the storage of the IC */
-  class_alloc(ppw->psi_0_ic_ncdmfft, N_qbin * sizeof(double),ppt->error_message);
-  class_alloc(ppw->psi_1_ic_ncdmfft, N_qbin * sizeof(double),ppt->error_message);
-  class_alloc(ppw->psi_2_ic_ncdmfft, N_qbin * sizeof(double),ppt->error_message);
 
   /** - allocate the storage of the actual psis */
   class_alloc(ppw->psi_0_ncdmfft, N_qbin * sizeof(double *),ppt->error_message);
   class_alloc(ppw->psi_1_ncdmfft, N_qbin * sizeof(double *),ppt->error_message);
   class_alloc(ppw->psi_2_ncdmfft, N_qbin * sizeof(double *),ppt->error_message);
 
-  /** - allocate the storage of the psi's from Boltzmann Hierarchy (for early-time results)  */
-  class_alloc(ppw->psi_BH_0_ncdmfft, N_qbin * sizeof(double *),ppt->error_message);
-  class_alloc(ppw->psi_BH_1_ncdmfft, N_qbin * sizeof(double *),ppt->error_message);
-  class_alloc(ppw->psi_BH_2_ncdmfft, N_qbin * sizeof(double *),ppt->error_message);
+  /** - allocate the storage of the psi's from Boltzmann Hierarchy (for initial conditions for high-k approx)  */
+  class_alloc(ppw->psi_ell_ic_ncdmfft_approx, ppr->l_max_ncdmfft * sizeof(double *),ppt->error_message);
+  for (int index_ell=0;index_ell<ppr->l_max_ncdmfft;index_ell++){
+    class_alloc(ppw->psi_ell_ic_ncdmfft_approx[index_ell], N_qbin * sizeof(double),ppt->error_message);
+  }
 
   /** allocate x_ncdmfft */
   class_alloc(ppw->xi_ncdmfft_sampling, N_qbin * sizeof(double*), ppt->error_message);
@@ -11805,9 +12006,6 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
       class_alloc(ppw->psi_1_ncdmfft[index_nq],ppw->tau_ncdmfft_size * sizeof(double),ppt->error_message);
       class_alloc(ppw->psi_2_ncdmfft[index_nq],ppw->tau_ncdmfft_size * sizeof(double),ppt->error_message);
 
-      class_alloc(ppw->psi_BH_0_ncdmfft[index_nq],ppw->tau_ncdmfft_size * sizeof(double)*2,ppt->error_message);
-      class_alloc(ppw->psi_BH_1_ncdmfft[index_nq],ppw->tau_ncdmfft_size * sizeof(double)*2,ppt->error_message);
-      class_alloc(ppw->psi_BH_2_ncdmfft[index_nq],ppw->tau_ncdmfft_size * sizeof(double)*2,ppt->error_message);
 
       class_alloc(ppw->xi_ncdmfft_sampling[index_nq],ppw->tau_ncdmfft_size * sizeof(double),ppt->error_message);
       index_nq += 1;
@@ -11896,6 +12094,9 @@ int perturbation_workspace_free_ncdmfft(struct perturbations * ppt,
 {
   free(ppw->eta_prime_ncdmfft);
   free(ppw->h_prime_ncdmfft);
+  free(ppw->eta_prime_prime_ncdmfft);
+  free(ppw->h_prime_prime_ncdmfft);
+  free(ppw->Hubble_ncdmfft);
 
   for (int intex_n=0;intex_n<pba->N_ncdm;intex_n++){
     free(ppw->rho_delta_ncdm_ncdmfft[intex_n]);
@@ -11911,14 +12112,12 @@ int perturbation_workspace_free_ncdmfft(struct perturbations * ppt,
   int N_qbin = 0; 
   for (int i = 0; i < pba->N_ncdm; i++) N_qbin += pba->q_size_ncdm[i];
   
+  for (int index_ell=0;index_ell<ppw->l_max_ncdmfft;index_ell++) free(ppw->psi_ell_ic_ncdmfft_approx[index_ell]);
+
   for (int intex_qn=0;intex_qn<N_qbin;intex_qn++){
     free(ppw->psi_0_ncdmfft[intex_qn]);
     free(ppw->psi_1_ncdmfft[intex_qn]);
     free(ppw->psi_2_ncdmfft[intex_qn]);
-
-    free(ppw->psi_BH_0_ncdmfft[intex_qn]);
-    free(ppw->psi_BH_1_ncdmfft[intex_qn]);
-    free(ppw->psi_BH_2_ncdmfft[intex_qn]);
 
     free(ppw->xi_ncdmfft_sampling[intex_qn]);
   }
@@ -11926,16 +12125,10 @@ int perturbation_workspace_free_ncdmfft(struct perturbations * ppt,
   free(ppw->psi_1_ncdmfft);
   free(ppw->psi_2_ncdmfft);
 
-  free(ppw->psi_BH_0_ncdmfft);
-  free(ppw->psi_BH_1_ncdmfft);
-  free(ppw->psi_BH_2_ncdmfft);
+  free(ppw->psi_ell_ic_ncdmfft_approx);
 
   free(ppw->xi_ncdmfft_sampling);
   free(ppw->KG1_maxq);
-
-  free(ppw->psi_0_ic_ncdmfft);
-  free(ppw->psi_1_ic_ncdmfft);
-  free(ppw->psi_2_ic_ncdmfft);
 
   free(ppw->tau_ncdmfft_sampling);
   free(ppw->a_ncdmfft);

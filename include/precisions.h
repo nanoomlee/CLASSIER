@@ -268,7 +268,8 @@ class_precision_parameter(start_small_k_at_tau_c_over_tau_h,double,0.0015) /**< 
 class_precision_parameter(start_large_k_at_tau_h_over_tau_k,double,0.07)  /**< largest wavelengths start being sampled when mode is sufficiently outside Hubble scale. This is quantified in terms of the ratio of hubble time scale to wavenumber time scale, \f$ \tau_h/\tau_k \f$ which is roughly equal to (k*tau). Start when this ratio equals start_large_k_at_tau_k_over_tau_h. Decrease this value to start integrating the wavenumbers earlier in time. */
 
 // for ncdmfft
-class_precision_parameter(ncdmfft_bigq_approximation,int,0)  /** flag for big-q approximation", 1:On / 2:Off */
+class_precision_parameter(ncdmfft_bigq_approx,int,0)  /** flag for big-q approximation", 1:On / 2:Off */
+class_precision_parameter(ncdmfft_small_scale_approx,int,0)  /** flag for big-q approximation", 1:On / 2:Off */
 class_precision_parameter(N_loops_ncdmfft,int,3)  /**< Number of NCDM FFT loops for approximation. */
 
 class_precision_parameter(N_G1,int,201)  /**< Number of xi points for G1(xi) */
@@ -279,7 +280,8 @@ class_precision_parameter(N_ell,int,3)
 
 class_precision_parameter(N_tau_ncdmfft_size_min,int,1000)  /**< Sample size of bessel functions in ncdmfft. */
 class_precision_parameter(N_tau_ncdmfft_size_scale,int,10000)  /**< Number of tau sampling for ncdmfft */
-class_precision_parameter(l_max_ncdmfft,int,3)  /**< max l to truncate for ansatz ncdmfft loop */
+class_precision_parameter(l_max_ncdmfft,int,60)  /**< max l to truncate for ansatz ncdmfft loop */
+class_precision_parameter(kmin_ncdmfft,double,0.5)  /**< min k for ncdmfft */
 class_precision_parameter(print_ncdmfft,int,0)
 /**< whether printed. */
 

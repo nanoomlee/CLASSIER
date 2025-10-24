@@ -383,8 +383,8 @@ struct perturbations
   
   double *xi_G1, *w8_G1;
   double **xi_G2, **w8_G2;
-
-  // Here are ncdmfft quantitites which are related to the reuse of the ncdmfft run for the Ansatz
+  double *xx;
+  double **j_array, **dj_array, **d2j_array;
 
   double selection_min_of_tau_min; /**< used in presence of selection functions (for matter density, cosmic shear...) */
   double selection_max_of_tau_max; /**< used in presence of selection functions (for matter density, cosmic shear...) */
@@ -625,6 +625,7 @@ struct perturbations_workspace
   finufft_plan r2c_plan_ncdmfinufft_G2;  // (NL)
   finufft_plan c2r_plan_ncdmfinufft_G2;  // (NL)
 
+  double tau_ini;
   double * xi_G2, * w8_G2;
 
   Gcoefficients * Acoeff;
@@ -648,6 +649,11 @@ struct perturbations_workspace
 
   short has_ncdm_psi_evolution;
 
+  int ncdm_fluid_approximation;
+  int bigq_approx_done;
+  int l_max_ncdmfft;
+  double ncdmfft_fluid_trigger_tau_over_tau_k;
+  
   int tau_ncdmfft_size;   /** k-dependent # of tau samples */
   int N_G2;               /** k-dependent # of xi samples for G2 */ 
   double * tau_ncdmfft_sampling;    /**< array of tau values on which we need to solve for massive neutrinos */
@@ -658,18 +664,16 @@ struct perturbations_workspace
 
   double * eta_prime_ncdmfft;   /**< eta_prime sources for calculating the first N_loops_ncdmfft-1 roudns */
   double * h_prime_ncdmfft;   /**< h_prime sources for calculating the first N_loops_ncdmfft-1 roudns */
-
-  double * psi_0_ic_ncdmfft;   /** stores the initial conditions of the psi_l evolution for the ncdmfft calculation */
-  double * psi_1_ic_ncdmfft;    /** indexed by [n_ncdm * pba->q_size_ncdm[0] + index_q] */
-  double * psi_2_ic_ncdmfft;
+  double * eta_prime_prime_ncdmfft;   /**< eta_prime sources for calculating the first N_loops_ncdmfft-1 roudns */
+  double * h_prime_prime_ncdmfft;   /**< h_prime sources for calculating the first N_loops_ncdmfft-1 roudns */
+  double * Hubble_ncdmfft;   /**< h_prime sources for calculating the first N_loops_ncdmfft-1 roudns */
 
   double ** psi_0_ncdmfft;      /**< the phi_l for ncdmfft. psi0_ncdmfft[q_index][tau_index]  */
   double ** psi_1_ncdmfft;      /**< the phi_l for ncdmfft */
   double ** psi_2_ncdmfft;      /**< the phi_l for ncdmfft */
 
-  double ** psi_BH_0_ncdmfft;      /**< the phi_l for ncdmfft. psi0_ncdmfft[q_index][tau_index]  */
-  double ** psi_BH_1_ncdmfft;      /**< the phi_l for ncdmfft */
-  double ** psi_BH_2_ncdmfft;      /**< the phi_l for ncdmfft */
+  double ** psi_ell_ic_ncdmfft_approx;      /**< the phi_l for ncdmfft */
+  int index_tau_ic_ncdmfft_approx;
 
   double delta_m;	/**< relative density perturbation of all non-relativistic species */
   double theta_m;	/**< velocity divergence theta of all non-relativistic species */
@@ -1067,6 +1071,19 @@ extern "C" {
   );
 
   int perturbations_convolve_ncdmfft(
+    struct precision * ppr,
+    struct background * pba,
+    struct perturbations * ppt,
+    struct perturbations_workspace * ppw,
+    double k, 
+    int n_ncdm,
+    int index_q,
+    double * accumulator_0,
+    double * accumulator_1,
+    double * accumulator_2
+    );
+
+  int perturbations_ncdm_small_scale_approx(
     struct precision * ppr,
     struct background * pba,
     struct perturbations * ppt,

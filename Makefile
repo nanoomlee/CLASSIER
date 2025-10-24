@@ -48,7 +48,7 @@ LDFLAG = -g -fPIC
 
 # Additional flags for ncdmfft calculations
 CCFLAG += -I/path/to/fftw/x.x.x/include -I/path/to/finufft/include
-LDFLAG += -L/path/to/fftw/x.x.x/lib -lfftw3 -lfftw3f -lfftw3_threads -lfftw3f_threads -L/path/to/finufft/lib/ -lfinufft  -lstdc++ # If the code cannot find libfinufft.so, you may want to export the path to /finufft/lib/
+LDFLAG += -L/path/to/fftw/x.x.x/lib -lfftw3 -lfftw3f -lfftw3_threads -lfftw3f_threads -L/path/to/finufft/lib-static/ -lfinufft  -lstdc++ # If the code cannot find libfinufft.so, you may want to export the path to /finufft/lib/
 
 
 # leave blank to compile without HyRec, or put path to HyRec directory
