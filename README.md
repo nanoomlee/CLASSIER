@@ -8,9 +8,10 @@ The code requires seperate installations of fftw3 (https://www.fftw.org) and fin
 
 If you use CLASSIER, please refer to:
 
-1. [N. Lee, J. L. Bernal, S. Günther, L. Ji, M. Kamionkowski (arXiv:2506.01956)](https://arxiv.org/abs/2506.01956)
-2. [L. Ji, M. Kamionkowski, J. L. Bernal, Phys. Rev. D 106, 103531 (2022)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.106.103531)
-3. [M. Kamionkowski, Phys. Rev. D 104, 063512 (2021)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.104.063512)
+1. [N. Lee, J. L. Bernal, S. Günther, L. Ji, M. Kamionkowski, Phys. Rev. D 112, 043529 (2025)](https://journals.aps.org/prd/abstract/10.1103/fs6c-zbzf)
+2. [N. Lee, Y. Ali-Haimoud, M. Kamionkowski (arXiv:2510.20821)](https://arxiv.org/abs/2510.20821)
+3. [L. Ji, M. Kamionkowski, J. L. Bernal, Phys. Rev. D 106, 103531 (2022)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.106.103531)
+4. [M. Kamionkowski, Phys. Rev. D 104, 063512 (2021)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.104.063512)
 
 You may also refer to the following papers, on which this work heavily relies:
 
