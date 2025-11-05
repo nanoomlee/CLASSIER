@@ -1919,6 +1919,7 @@ int background_solve(
   /* evolvers */
   extern int evolver_rk();
   extern int evolver_ndf15();
+  extern int evolver_fss();
   int (*generic_evolver)() = evolver_ndf15;
 
   /* initial and final loga values */
@@ -1983,6 +1984,13 @@ int background_solve(
     generic_evolver = evolver_ndf15;
     if (pba->background_verbose > 1) {
       printf("%s\n", "Chose ndf15 as generic_evolver");
+    }
+    break;
+
+  case fss:
+    generic_evolver = evolver_fss;
+    if (pba->background_verbose > 1) {
+      printf("%s\n", "Chose forward-single-step (fss) as generic_evolver");
     }
     break;
   }

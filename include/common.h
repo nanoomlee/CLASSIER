@@ -347,7 +347,8 @@ struct output;
  */
 enum evolver_type {
   rk, /* Runge-Kutta integrator */
-  ndf15 /* stiff integrator */
+  ndf15, /* stiff integrator */
+  fss /* forward single-step integrator */
 };
 
 /**

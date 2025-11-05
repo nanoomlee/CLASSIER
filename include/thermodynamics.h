@@ -6,6 +6,7 @@
 #include "background.h"
 #include "evolver_ndf15.h"
 #include "evolver_rkck.h"
+#include "evolver_fss.h"
 #include "wrap_hyrec.h"
 #include "wrap_recfast.h"
 #include "injection.h"

@@ -96,7 +96,7 @@ endif
 %.o:  %.c .base $(HEADERFILES)
 	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
 
-TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o  evolver_ndf15.o arrays.o parser.o quadrature.o hyperspherical.o common.o trigonometric_integrals.o ncdmfft_tools.o
+TOOLS = growTable.o dei_rkck.o dei_fss.o sparse.o evolver_rkck.o  evolver_ndf15.o evolver_fss.o arrays.o parser.o quadrature.o hyperspherical.o common.o trigonometric_integrals.o ncdmfft_tools.o
 
 SOURCE = input.o background.o thermodynamics.o perturbations.o primordial.o fourier.o transfer.o harmonic.o lensing.o distortions.o
 
