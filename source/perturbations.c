@@ -3486,7 +3486,6 @@ int perturbations_solve(
  
   for (index_loop_ncdmfft=0; index_loop_ncdmfft<ppw->N_loops_ncdmfft; index_loop_ncdmfft++) {
     t_evolv = omp_get_wtime();    
-    ppw->bigq_approx_done = 0;
     
 	/* - update loop index */
     ppw->index_loop_ncdmfft = index_loop_ncdmfft;
@@ -11270,9 +11269,8 @@ int perturbations_initial_condition_ncdmfft(
 
 {
   int index_nq = 0;
-  if (n_ncdm>0){
-    for (int i=0;i<n_ncdm;i++) index_nq += pba->q_size_ncdm[i];
-  }
+  for (int i=0;i<n_ncdm;i++) index_nq += pba->q_size_ncdm[i];
+  
   index_nq += index_q;
 
   double * x = ppw->xi_ncdmfft_sampling[index_nq];
@@ -11317,10 +11315,12 @@ int perturbations_convolve_ncdmfft(
   int last_index;
   double q, a, e;
   ErrorMsg em;
-  int index_maxq = pba->q_size_ncdm[n_ncdm]-1;
   int N_G1=ppr->N_G1;
   int N_G2 = ppw->N_G2;
   int N_G2_freq = N_G2*10+1;
+  int index_nq=0;
+  for (int i=0;i<n_ncdm;i++) index_nq += pba->q_size_ncdm[i];
+  index_nq += index_q;
 
   // FFT frequencies and their weights for backward integration
   double *freq_G2, *w8_freq_G2;
@@ -11365,46 +11365,46 @@ int perturbations_convolve_ncdmfft(
   double A_a1=0, A_b1=0, A_c1=0, A_d1=0, A_a2=0, A_b2=0, A_c2=0, A_d2=0;
   double B_a1=0, B_b1=0, B_c1=0, B_d1=0, B_a2=0, B_b2=0, B_c2=0, B_d2=0;
   double xi_i_p;
-  xi_i = ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][0];
-  xi_m = ppw->xi_star_qbin[n_ncdm*pba->q_size_ncdm[n_ncdm]+index_q];
-  xi_f = ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][ppw->tau_ncdmfft_size-1];
+  xi_i = ppw->xi_ncdmfft_sampling[index_nq][0];
+  xi_m = ppw->xi_star_qbin[index_nq];
+  xi_f = ppw->xi_ncdmfft_sampling[index_nq][ppw->tau_ncdmfft_size-1];
 
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GA_of_tau,
                 1, xi_i, &last_index, &G_i, 1, em), ppt->error_message, ppt->error_message);
   
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GA_of_tau,
                 1, xi_m, &last_index, &G_m, 1, em), ppt->error_message, ppt->error_message);
 
   G_f = GA_of_tau[ppw->tau_ncdmfft_size-1];
 
-  if (ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][1] < 0.0001*xi_m) xi_i_p = 0.0001*xi_m;
-  else xi_i_p = ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][1]/10.;
+  if (ppw->xi_ncdmfft_sampling[index_nq][1] < 0.0001*xi_m) xi_i_p = 0.0001*xi_m;
+  else xi_i_p = ppw->xi_ncdmfft_sampling[index_nq][1]/10.;
 
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GA_of_tau,
                 1, xi_i_p, &last_index, &G_i_p, 1, em), ppt->error_message, ppt->error_message);
 
   Gp_i = (G_i_p - G_i)/xi_i_p;
 
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GA_of_tau,
                 1, xi_m*(1-Dlogxi), &last_index, &G_m_m, 1, em), ppt->error_message, ppt->error_message);
 
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GA_of_tau,
                 1, xi_m*(1+Dlogxi), &last_index, &G_m_p, 1, em), ppt->error_message, ppt->error_message);
 
   Gp_m = (G_m_p - G_m_m)/(2*xi_m*Dlogxi);
 
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GA_of_tau,
                 1, xi_f*(1-Dlogxi), &last_index, &G_f_m, 1, em), ppt->error_message, ppt->error_message);
 
@@ -11415,32 +11415,32 @@ int perturbations_convolve_ncdmfft(
   A_a2 = ppw->Acoeff->a2, A_b2 = ppw->Acoeff->b2, A_c2 = ppw->Acoeff->c2, A_d2 = ppw->Acoeff->d2;
         
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GB_of_tau,
                 1, xi_i, &last_index, &G_i, 1, em), ppt->error_message, ppt->error_message);
       
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GB_of_tau,
                 1, xi_m, &last_index, &G_m, 1, em), ppt->error_message, ppt->error_message);
   G_f = GB_of_tau[ppw->tau_ncdmfft_size-1];
 
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GB_of_tau,
                 1, xi_i_p, &last_index, &G_i_p, 1, em), ppt->error_message, ppt->error_message);
   Gp_i = (G_i_p - G_i)/xi_i_p;
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GB_of_tau, 
                 1, xi_m*(1-Dlogxi), &last_index, &G_m_m, 1, em), ppt->error_message, ppt->error_message);
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GB_of_tau,
                 1, xi_m*(1+Dlogxi), &last_index, &G_m_p, 1, em), ppt->error_message, ppt->error_message);
   Gp_m = (G_m_p - G_m_m)/(2*xi_m*Dlogxi);
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, GB_of_tau,
                 1, xi_f*(1-Dlogxi), &last_index, &G_f_m, 1, em), ppt->error_message, ppt->error_message);
   Gp_f = (G_f - G_f_m)/(xi_f*Dlogxi);
@@ -11471,7 +11471,7 @@ int perturbations_convolve_ncdmfft(
 
   // output grids for backward integration (scaled to be [0,PI] for G2 convolution and [0,PI*(xi_f/xi_m)] for G1 convolution)
   for (int i=0;i<ppw->tau_ncdmfft_size;i++){
-    xi_G2_out[i] = (ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][i]) / ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][ppw->tau_ncdmfft_size-1] * _PI_;
+    xi_G2_out[i] = (ppw->xi_ncdmfft_sampling[index_nq][i]) / ppw->xi_ncdmfft_sampling[index_nq][ppw->tau_ncdmfft_size-1] * _PI_;
     xi_G1_out[i] = xi_G2_out[i]* xi_f/xi_m;
   }
 
@@ -11483,7 +11483,7 @@ int perturbations_convolve_ncdmfft(
     xi_G1_logscale[i] = xx/xi_m*_PI_;
 
     class_call(array_interpolate_linear(
-             ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+             ppw->xi_ncdmfft_sampling[index_nq],
              ppw->tau_ncdmfft_size, GA_of_tau,
              1, xx, &last_index, &GG, 1, em), ppt->error_message, ppt->error_message);
 
@@ -11491,7 +11491,7 @@ int perturbations_convolve_ncdmfft(
 	G1[i] = G1[i]*ppt->w8_G1[i]*log(1+xi_m)/2.*(1+xx);
 
     class_call(array_interpolate_linear(
-             ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+             ppw->xi_ncdmfft_sampling[index_nq],
              ppw->tau_ncdmfft_size, GB_of_tau,
              1, xx, &last_index, &GG, 1, em), ppt->error_message, ppt->error_message);
     G1[i+N_G1] = (double complex) (GG - (B_a1 + B_b1*xx + B_c1*xx*xx + B_d1*xx*xx*xx));
@@ -11502,19 +11502,22 @@ int perturbations_convolve_ncdmfft(
   if (ppt->perturbations_verbose==3) printf("interpolate and build G1_of_x (including splitting)  = %f \n", stop4 - stop3);
 
   // # of FFT frequencies for G1 (need to be an odd)
-  int N_freq1 = (int) (ceil(N_G1*ppw->xi_max_qbin[n_ncdm*pba->q_size_ncdm[n_ncdm]+index_q]/xi_m));
+  int N_freq1 = (int) (ceil(N_G1*ppw->xi_max_qbin[index_nq]/xi_m));
   if (N_freq1%2==0) N_freq1 += 1;
 
   double tau_at_xi_m;
   class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+                ppw->xi_ncdmfft_sampling[index_nq],
                 ppw->tau_ncdmfft_size, ppw->tau_ncdmfft_sampling,
                 1, xi_m, &last_index, &tau_at_xi_m, 1, em), ppt->error_message, ppt->error_message);
  
   // G1 convolution will be done when not using big-q approx
   // When using big-q approx, G1 convolution is done when the following condition is not met
-  if ((ppw->bigq_approx_done==0)||(fabs(ppr->xi_m/k-tau_at_xi_m)/tau_at_xi_m>0.001)){
-    if (ppr->ncdmfft_bigq_approx==1) ppw->bigq_approx_done = 1;
+  if ((ppw->bigq_approx_done[n_ncdm]==0)||(fabs(ppr->xi_m/k-tau_at_xi_m)/tau_at_xi_m>0.001)){
+    if ((ppr->ncdmfft_bigq_approx==1) && (ppw->bigq_approx_done[n_ncdm]==0)) {
+      ppw->bigq_approx_done[n_ncdm] = 1;
+      ppw->index_bigq[n_ncdm] = index_nq;
+    }
     double complex *integrand_G1, *finufft_G1;
     double *freq_G1, *w8_freq_G1;
     integrand_G1 = (double complex *) malloc(sizeof(double complex) * ((int) (ppr->N_ell*N_freq1)));
@@ -11586,9 +11589,9 @@ int perturbations_convolve_ncdmfft(
     for (ell=0;ell<ppr->N_ell;ell++){
       for (int i=0;i<ppw->tau_ncdmfft_size;i++){
         class_call(array_interpolate_linear(
-                ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_maxq],
+                ppw->xi_ncdmfft_sampling[ppw->index_bigq[n_ncdm]],
                 ppw->tau_ncdmfft_size, ppw->KG1_maxq+ell*ppw->tau_ncdmfft_size,
-                1, ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][i], &last_index, &temp_KG1, 1, em), ppt->error_message, ppt->error_message);
+                1, ppw->xi_ncdmfft_sampling[index_nq][i], &last_index, &temp_KG1, 1, em), ppt->error_message, ppt->error_message);
         KG1[ell*ppw->tau_ncdmfft_size+i] = temp_KG1*pba->dlnf0_dlnq_ncdm[n_ncdm][index_q];
       }
     }
@@ -11603,14 +11606,14 @@ int perturbations_convolve_ncdmfft(
     
     if (xx>=xi_m){
       class_call(array_interpolate_linear(
-               ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+               ppw->xi_ncdmfft_sampling[index_nq],
                ppw->tau_ncdmfft_size, GA_of_tau,
                1, xx, &last_index, &GG, 1, em), ppt->error_message, ppt->error_message);
       G2[i] = (double complex) (GG - (A_a2 + A_b2*xx + A_c2*xx*xx + A_d2*xx*xx*xx));
       G2[i] = G2[i]*ppw->w8_G2[i]*xi_f/2;
 
       class_call(array_interpolate_linear(
-               ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q],
+               ppw->xi_ncdmfft_sampling[index_nq],
                ppw->tau_ncdmfft_size, GB_of_tau,
                1, xx, &last_index, &GG, 1, em), ppt->error_message, ppt->error_message);
       G2[i+N_G2] = (double complex) (GG - (B_a2 + B_b2*xx + B_c2*xx*xx + B_d2*xx*xx*xx));
@@ -11674,7 +11677,7 @@ int perturbations_convolve_ncdmfft(
   // Add all the contributions
   for (ell=0;ell<ppr->N_ell;ell++){
     for (int i=0; i<ppw->tau_ncdmfft_size; i++) {
-      if (ppw->xi_ncdmfft_sampling[n_ncdm * pba->q_size_ncdm[0] + index_q][i] <= (xi_m)) {
+      if (ppw->xi_ncdmfft_sampling[index_nq][i] <= (xi_m)) {
         KG_total[ell*ppw->tau_ncdmfft_size+i] = KG0[ell*ppw->tau_ncdmfft_size+i] + creal(KG1[ell*ppw->tau_ncdmfft_size+i]);
       }
       else KG_total[ell*ppw->tau_ncdmfft_size+i] = KG0[ell*ppw->tau_ncdmfft_size+i] + creal(KG1[ell*ppw->tau_ncdmfft_size+i]) + creal(KG2[ell*ppw->tau_ncdmfft_size+i]);
@@ -11728,10 +11731,10 @@ int perturbations_ncdm_small_scale_approx(
   int index_nq = 0;
   double jell, jell_p1, jell_p2;
   double djell, ddjell;
-  if (n_ncdm>0){
-    for (int i=0;i<n_ncdm;i++) index_nq += pba->q_size_ncdm[i];
-  }
+
+  for (int i=0;i<n_ncdm;i++) index_nq += pba->q_size_ncdm[i];
   index_nq += index_q;
+
   double xi;
   double a_ic = ppw->a_ncdmfft[ppw->index_tau_ic_ncdmfft_approx];
   double e_ic = sqrt(q*q+a_ic*a_ic*pba->M_ncdm[n_ncdm]*pba->M_ncdm[n_ncdm]);
@@ -11867,10 +11870,15 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
 
   ppw->tau_ini = tau_ini;
   ppw->l_max_ncdmfft = ppr->l_max_ncdmfft;
-  ppw->bigq_approx_done = 0;
 
+  class_alloc(ppw->bigq_approx_done,pba->N_ncdm*sizeof(int),ppt->error_message);
+  class_alloc(ppw->index_bigq,pba->N_ncdm*sizeof(int),ppt->error_message);
   int N_qbin = 0; 
-  for (int i = 0; i < pba->N_ncdm; i++) N_qbin += pba->q_size_ncdm[i];
+  for (int i = 0; i < pba->N_ncdm; i++) {
+    N_qbin += pba->q_size_ncdm[i];
+    ppw->bigq_approx_done[0] = 0;
+    ppw->index_bigq[0] = -1;
+  }
     
   class_alloc(pvecback,pba->bg_size*sizeof(double),ppt->error_message);
   class_alloc(chi_offset,N_qbin*sizeof(double),ppt->error_message);
@@ -11910,9 +11918,10 @@ int perturbation_workspace_fill_ncdmfft(struct precision * ppr,
   // find xi_max of for the different neutrino species
   index_nq = 0;
   for (int i = 0; i < pba->N_ncdm; i++) {
+    xi_max=0.;
 	m_ncdm_max = MAX(m_ncdm_max, pba->m_ncdm_in_eV[i]);
     for (int j = 0; j < pba->q_size_ncdm[i]; j++) {
-      if (pvecback[pba->index_bg_chi_ncdmfft+i*pba->q_size_ncdm[i]+j]*k>xi_max) {
+      if (pvecback[pba->index_bg_chi_ncdmfft+index_nq]*k>xi_max) {
     
         xi_max = pvecback[pba->index_bg_chi_ncdmfft+index_nq]*k-chi_ini[index_nq]*k; 
 		ppw->xi_max_qbin[index_nq] = xi_max; 
@@ -12132,6 +12141,9 @@ int perturbation_workspace_free_ncdmfft(struct perturbations * ppt,
 
   free(ppw->tau_ncdmfft_sampling);
   free(ppw->a_ncdmfft);
+
+  free(ppw->bigq_approx_done);
+  free(ppw->index_bigq);
 
   
   return _SUCCESS_;
