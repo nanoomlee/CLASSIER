@@ -2326,10 +2326,12 @@ int background_initial_conditions(
              pba->error_message);
 
   if (pba->has_ncdmfft == _TRUE_) {
+    int index_nq=0;
     for (int i=0; i < pba->N_ncdm; i++){
       for (int j=0; j < pba->q_size_ncdm[i]; j++){
         /** - set IC to tau. They are to be rescaled when we know tau_ini and tau_f */
-        pvecback_integration[pba->index_bi_chi_ncdmfft + i*pba->q_size_ncdm[i] + j] = 1./(a * pvecback[pba->index_bg_H]);
+        pvecback_integration[pba->index_bi_chi_ncdmfft + index_nq] = 1./(a * pvecback[pba->index_bg_H]);
+        index_nq += 1;
       }
     }
   }
@@ -2704,12 +2706,14 @@ int background_derivs(
 
   if (pba->has_ncdmfft == _TRUE_) {
 	double epsilon;
+    int index_nq=0;
     /** - Compute comoving neutrinos horizon. It has to be looped over each massive neutrino species and each momentum bin \f$ */
     for (int i=0; i < pba->N_ncdm; i++){
       for (int j=0; j < pba->q_size_ncdm[i]; j++){
         /** - Compute comoving neutrinos horizon \f$ d\chi/dloga = q / (\sqrt(q^2 + a^2 m^2 / T_0^2 ) a H ) \f$ */
         epsilon = sqrt( pow(pba->q_ncdm[i][j], 2) + pow(a * pba->M_ncdm[i], 2));
-        dy[pba->index_bi_chi_ncdmfft + i*pba->q_size_ncdm[i] + j] = pba->q_ncdm[i][j] / epsilon / a / H;
+        dy[pba->index_bi_chi_ncdmfft + index_nq] = pba->q_ncdm[i][j] / epsilon / a / H;
+        index_nq += 1;
       }
     }
   }

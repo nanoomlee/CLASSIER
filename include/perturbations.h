@@ -650,7 +650,8 @@ struct perturbations_workspace
   short has_ncdm_psi_evolution;
 
   int ncdm_fluid_approximation;
-  int bigq_approx_done;
+  int * bigq_approx_done;
+  int * index_bigq;
   int l_max_ncdmfft;
   double ncdmfft_fluid_trigger_tau_over_tau_k;
   
